@@ -24,9 +24,8 @@ h1 {
 }
 
 form {
-  display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
 }
 
 label {
@@ -38,7 +37,7 @@ input, select, button, a.button {
   border: 1px solid #ccc;
   border-radius: 4px;
   display: block;
-  width: 100%;
+  width: 90%;
   text-align: center;
   text-decoration: none;
   margin-top: 10px;
