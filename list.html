@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daftar Masalah Converter</title>
+  <link rel="stylesheet" href="styles1.css">
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+    import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-database.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCyvkWAbIDB588aMjBY41NbD2HMLakXiUE",
+      authDomain: "historyconverter-2862f.firebaseapp.com",
+      databaseURL: "https://historyconverter-2862f-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "historyconverter-2862f",
+      storageBucket: "historyconverter-2862f.appspot.com",
+      messagingSenderId: "38512001938",
+      appId: "1:38512001938:web:de4f34f3e5856e2347774b"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const tableBody = document.getElementById("issueTableBody");
+
+      const loadIssues = () => {
+        onValue(ref(db, 'issues'), (snapshot) => {
+          tableBody.innerHTML = "";
+          let index = 1;
+          snapshot.forEach(childSnapshot => {
+            const data = childSnapshot.val();
+            const row = `<tr>
+              <td>${index++}</td>
+              <td>${data.inspector}</td>
+              <td>${data.time}</td>
+              <td>${data.issue}</td>
+              <td>${data.treatment}</td>
+              <td>${data.wrPhotoURL ? `<img src="${data.wrPhotoURL}" alt="Foto WR" class="thumbnail" data-full="${data.wrPhotoURL}">` : "Tidak Ada WR"}</td>
+              <td>${data.photoURL ? `<img src="${data.photoURL}" alt="Foto Masalah" class="thumbnail" data-full="${data.photoURL}">` : "Tidak Ada Foto"}</td>
+              <td>
+                <select class="wr-status" data-id="${childSnapshot.key}">
+                  <option value="Belum" ${data.wrStatus === "Belum" ? "selected" : ""}>Belum</option>
+                  <option value="Tutup" ${data.wrStatus === "Tutup" ? "selected" : ""}>Tutup</option>
+                </select>
+              </td>
+              <td><button class="update-btn" data-id="${childSnapshot.key}">Update</button></td>
+              <td><button class="delete-btn" data-id="${childSnapshot.key}">Hapus</button></td>
+            </tr>`;
+            tableBody.insertAdjacentHTML('beforeend', row);
+          });
+
+          // Add event listeners for update buttons
+          document.querySelectorAll('.update-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {const id = e.target.getAttribute('data-id');
+              const selectElement = document.querySelector(`.wr-status[data-id="${id}"]`);
+              const newStatus = selectElement.value;
+
+              const confirmed = confirm('Apakah Anda yakin ingin mengubah status WR ini?');
+              if (confirmed) {
+                await update(ref(db, 'issues/' + id), { wrStatus: newStatus });
+                alert('Status WR berhasil diperbarui.');
+                loadIssues(); // Reload issues to reflect the updated status
+              }
+            });
+          });
+
+          // Add event listeners for delete buttons
+          document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {
+              const id = e.target.getAttribute('data-id');
+              const code = prompt('Masukkan kode verifikasi untuk menghapus:');
+              if (code === '0000') {
+                await remove(ref(db, 'issues/' + id));
+                alert('Data berhasil dihapus.');
+                loadIssues(); // Reload issues to reflect the removal
+              } else {
+                alert('Kode verifikasi salah.');
+              }
+            });
+          });
+
+          // Add event listener for thumbnail click to open modal
+          document.querySelectorAll('.thumbnail').forEach(img => {
+            img.addEventListener('click', (e) => {
+              const fullImageUrl = e.target.getAttribute('data-full');
+              const modal = document.getElementById('imageModal');
+              const modalImg = document.getElementById('modalImage');
+              modal.style.display = 'block';
+              modalImg.src = fullImageUrl;
+            });
+          });
+        });
+      };
+
+      loadIssues();
+
+      // Close the modal when the user clicks outside the image
+      const modal = document.getElementById('imageModal');
+      modal.addEventListener('click', (e) => {
+        if (e.target.id === 'imageModal') {
+          modal.style.display = 'none';
+        }
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Daftar Masalah Converter</h1>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Nama Inspector</th>
+            <th>Waktu</th>
+            <th>Masalah</th>
+            <th>Perlakuan</th>
+            <th>Work Request (WR)</th>
+            <th>Foto Masalah</th>
+            <th>Status WR</th>
+            <th>Update</th>
+            <th>Hapus</th>
+          </tr>
+        </thead>
+        <tbody id="issueTableBody">
+        </tbody>
+      </table>
+    </div>
+    <a href="index.html" class="button">Input Masalah Baru</a>
+  </div>
+
+  <!-- The Modal for Image -->
+  <div id="imageModal" class="modal">
+    <span class="close">&times;</span>
+    <img class="modal-content" id="modalImage">
+  </div>
+</body>
+</html>

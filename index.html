@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Input Masalah Converter</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    
+    .container form button,
+    .container a.button {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+      text-align: center;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .container form button:hover,
+    .container a.button:hover {
+      background-color: #45a049;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@1.0.15/dist/browser-image-compression.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
+    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCyvkWAbIDB588aMjBY41NbD2HMLakXiUE",
+      authDomain: "historyconverter-2862f.firebaseapp.com",
+      databaseURL: "https://historyconverter-2862f-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "historyconverter-2862f",
+      storageBucket: "historyconverter-2862f.appspot.com",
+      messagingSenderId: "38512001938",
+      appId: "1:38512001938:web:de4f34f3e5856e2347774b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const storage = getStorage(app);
+    const db = getDatabase(app);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const issueForm = document.getElementById('issueForm');
+      const photoInput = document.getElementById('photo');
+      const wrStatusInput = document.getElementById('wrStatus');
+      const wrPhotoInput = document.getElementById('wrPhoto');
+      const wrPhotoContainer = document.getElementById('wrPhotoContainer');
+
+      wrStatusInput.addEventListener('change', (e) => {
+        if (e.target.value === 'Ada') {
+          wrPhotoContainer.style.display = 'block';
+        } else {
+          wrPhotoContainer.style.display = 'none';
+          wrPhotoInput.value = null;
+        }
+      });
+
+      issueForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const inspector = document.getElementById('inspector').value;
+        const time = document.getElementById('time').value;
+        const issue = document.getElementById('issue').value;
+        const treatment = document.getElementById('treatment').value;
+
+        let photoURL = '';
+        if (photoInput.files.length > 0) {
+          const photoFile = photoInput.files[0];
+          const compressedPhoto = await imageCompression(photoFile, { maxSizeMB: 0.5, useWebWorker: true });
+          const photoRef = storageRef(storage, 'issues/' + compressedPhoto.name);
+          const photoSnapshot = await uploadBytes(photoRef, compressedPhoto);
+          photoURL = await getDownloadURL(photoSnapshot.ref);
+        }
+
+        let wrPhotoURL = '';
+        if (wrStatusInput.value === 'Ada' && wrPhotoInput.files.length > 0) {
+          const wrPhotoFile = wrPhotoInput.files[0];
+          const compressedWRPhoto = await imageCompression(wrPhotoFile, { maxSizeMB: 0.1, useWebWorker: true });
+          const wrPhotoRef = storageRef(storage, 'wr_photos/' + compressedWRPhoto.name);
+          const wrPhotoSnapshot = await uploadBytes(wrPhotoRef, compressedWRPhoto);
+          wrPhotoURL = await getDownloadURL(wrPhotoSnapshot.ref);
+        }
+
+        const newIssueRef = push(ref(db, 'issues'));
+        await set(newIssueRef, {
+          inspector,
+          time,
+          issue,
+          treatment,
+          photoURL,
+          wrPhotoURL,
+          wrStatus: wrStatusInput.value
+        });
+
+        alert('Masalah berhasil ditambahkan.');
+        issueForm.reset();
+        wrPhotoContainer.style.display = 'none';
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Input Masalah Converter</h1>
+    <form id="issueForm">
+      <label for="inspector">Nama Inspector:</label>
+      <input type="text" id="inspector" name="inspector" required>
+      <label for="time">Waktu:</label>
+      <input type="datetime-local" id="time" name="time" required>
+      <label for="issue">Masalah:</label>
+      <textarea id="issue" name="issue" required></textarea>
+      <label for="photo">Foto Masalah:</label>
+      <input type="file" id="photo" name="photo" accept="image/*">
+      <label for="treatment">Perlakuan:</label>
+      <textarea id="treatment" name="treatment" required></textarea>
+      <label for="wrStatus">Work Request:</label>
+      <select id="wrStatus" name="wrStatus" required>
+        <option value="Tidak Ada">Tidak Ada</option>
+        <option value="Ada">Ada</option>
+      </select>
+
+      <div id="wrPhotoContainer" style="display: none;">
+        <label for="wrPhoto">Upload Foto Work Request:</label>
+        <input type="file" id="wrPhoto" name="wrPhoto" accept="image/*">
+      </div>
+
+      <button type="submit">Submit</button>
+    </form>
+    <a href="list.html" class="button">Lihat Daftar Masalah</a>
+  </div>
+</body>
+</html>
