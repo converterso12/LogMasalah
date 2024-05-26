@@ -6,7 +6,6 @@
   <title>Input Masalah Converter</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    
     .container form button,
     .container a.button {
       width: 80%;
@@ -16,18 +15,42 @@
       color: white;
       border: none;
       cursor: pointer;
-      
     }
 
     .container form button:hover,
     .container a.button:hover {
       background-color: #45a049;
     }
+
+    .progress-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 9999;
+      display: none;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 20px;
+      background-color: #4CAF50;
+      border-radius: 5px;
+    }
+
+    .progress-text {
+      margin-top: 10px;
+      text-align: center;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@1.0.15/dist/browser-image-compression.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
+    import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
     import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-database.js";
 
     const firebaseConfig = {
@@ -50,6 +73,9 @@
       const wrStatusInput = document.getElementById('wrStatus');
       const wrPhotoInput = document.getElementById('wrPhoto');
       const wrPhotoContainer = document.getElementById('wrPhotoContainer');
+      const progressPopup = document.getElementById('progressPopup');
+      const progressBar = progressPopup.querySelector('.progress-bar');
+      const progressText = progressPopup.querySelector('.progress-text');
 
       wrStatusInput.addEventListener('change', (e) => {
         if (e.target.value === 'Ada') {
@@ -63,28 +89,65 @@
       issueForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        progressPopup.style.display = 'block';
+
         const inspector = document.getElementById('inspector').value;
         const time = document.getElementById('time').value;
         const issue = document.getElementById('issue').value;
         const treatment = document.getElementById('treatment').value;
 
         let photoURL = '';
+        let wrPhotoURL = '';
+        let totalBytes = 0;
+
         if (photoInput.files.length > 0) {
-          const photoFile = photoInput.files[0];
-          const compressedPhoto = await imageCompression(photoFile, { maxSizeMB: 0.5, useWebWorker: true });
-          const photoRef = storageRef(storage, 'issues/' + compressedPhoto.name);
-          const photoSnapshot = await uploadBytes(photoRef, compressedPhoto);
-          photoURL = await getDownloadURL(photoSnapshot.ref);
+          totalBytes += photoInput.files[0].size;
+        }
+        if (wrStatusInput.value === 'Ada' && wrPhotoInput.files.length > 0) {
+          totalBytes += wrPhotoInput.files[0].size;
         }
 
-        let wrPhotoURL = '';
-        if (wrStatusInput.value === 'Ada' && wrPhotoInput.files.length > 0) {
-          const wrPhotoFile = wrPhotoInput.files[0];
-          const compressedWRPhoto = await imageCompression(wrPhotoFile, { maxSizeMB: 0.1, useWebWorker: true });
-          const wrPhotoRef = storageRef(storage, 'wr_photos/' + compressedWRPhoto.name);
-          const wrPhotoSnapshot = await uploadBytes(wrPhotoRef, compressedWRPhoto);
-          wrPhotoURL = await getDownloadURL(wrPhotoSnapshot.ref);
+        let uploadedBytes = 0;
+
+        const updateProgress = () => {
+          const progress = (uploadedBytes / totalBytes) * 100;
+          progressBar.style.width = `${progress}%`;
+          progressText.textContent = `${Math.round(progress)}%`;
+        };
+
+        const uploadFile = (file, path) => {
+          return new Promise((resolve, reject) => {
+            const compressedFile = imageCompression(file, { maxSizeMB: 0.5, useWebWorker: true }).then(compressedFile => {
+              const fileRef = storageRef(storage, path + compressedFile.name);
+              const uploadTask = uploadBytesResumable(fileRef, compressedFile);
+
+              uploadTask.on('state_changed', (snapshot) => {
+                uploadedBytes += snapshot.bytesTransferred;
+                updateProgress();
+              }, (error) => {
+                reject(error);
+              }, async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL);
+              });
+            });
+          });
+        };
+
+        const uploadPromises = [];
+        if (photoInput.files.length > 0) {
+          uploadPromises.push(uploadFile(photoInput.files[0], 'issues/').then(url => {
+            photoURL = url;
+          }));
         }
+
+        if (wrStatusInput.value === 'Ada' && wrPhotoInput.files.length > 0) {
+          uploadPromises.push(uploadFile(wrPhotoInput.files[0], 'wr_photos/').then(url => {
+            wrPhotoURL = url;
+          }));
+        }
+
+        await Promise.all(uploadPromises);
 
         const newIssueRef = push(ref(db, 'issues'));
         await set(newIssueRef, {
@@ -98,6 +161,9 @@
         });
 
         alert('Masalah berhasil ditambahkan.');
+        progressPopup.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressText.textContent = '0%';
         issueForm.reset();
         wrPhotoContainer.style.display = 'none';
       });
@@ -132,6 +198,11 @@
       <button type="submit">Submit</button>
     </form>
     <a href="list.html" class="button">Lihat Daftar Masalah</a>
+  </div>
+
+  <div class="progress-popup" id="progressPopup">
+    <div class="progress-bar"></div>
+    <div class="progress-text">0%</div>
   </div>
 </body>
 </html>
