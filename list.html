@@ -32,8 +32,18 @@
         onValue(ref(db, 'issues'), (snapshot) => {
           tableBody.innerHTML = "";
           let index = 1;
+          const issuesArray = [];
+
           snapshot.forEach(childSnapshot => {
             const data = childSnapshot.val();
+            data.key = childSnapshot.key; // Save the key for later use
+            issuesArray.push(data);
+          });
+
+          // Sort issues by time from earliest to latest
+          issuesArray.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+          issuesArray.forEach(data => {
             const row = `<tr>
               <td>${index++}</td>
               <td>${data.inspector}</td>
@@ -43,20 +53,21 @@
               <td>${data.wrPhotoURL ? `<img src="${data.wrPhotoURL}" alt="Foto WR" class="thumbnail" data-full="${data.wrPhotoURL}">` : "Tidak Ada WR"}</td>
               <td>${data.photoURL ? `<img src="${data.photoURL}" alt="Foto Masalah" class="thumbnail" data-full="${data.photoURL}">` : "Tidak Ada Foto"}</td>
               <td>
-                <select class="wr-status" data-id="${childSnapshot.key}">
+                <select class="wr-status" data-id="${data.key}">
                   <option value="Belum" ${data.wrStatus === "Belum" ? "selected" : ""}>Belum</option>
                   <option value="Tutup" ${data.wrStatus === "Tutup" ? "selected" : ""}>Tutup</option>
                 </select>
               </td>
-              <td><button class="update-btn" data-id="${childSnapshot.key}">Update</button></td>
-              <td><button class="delete-btn" data-id="${childSnapshot.key}">Hapus</button></td>
+              <td><button class="update-btn" data-id="${data.key}">Update</button></td>
+              <td><button class="delete-btn" data-id="${data.key}">Hapus</button></td>
             </tr>`;
             tableBody.insertAdjacentHTML('beforeend', row);
           });
 
           // Add event listeners for update buttons
           document.querySelectorAll('.update-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {const id = e.target.getAttribute('data-id');
+            button.addEventListener('click', async (e) => {
+              const id = e.target.getAttribute('data-id');
               const selectElement = document.querySelector(`.wr-status[data-id="${id}"]`);
               const newStatus = selectElement.value;
 
