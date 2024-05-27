@@ -32,19 +32,12 @@
         onValue(ref(db, 'issues'), (snapshot) => {
           tableBody.innerHTML = "";
           let index = 1;
-          const issuesArray = [];
 
           snapshot.forEach(childSnapshot => {
             const data = childSnapshot.val();
-            data.key = childSnapshot.key; // Save the key for later use
-            issuesArray.push(data);
-          });
+            const key = childSnapshot.key;
 
-          // Sort issues by time from earliest to latest
-          issuesArray.sort((a, b) => new Date(a.time) - new Date(b.time));
-
-          issuesArray.forEach(data => {
-            const row = `<tr>
+            const row = `<tr data-key="${key}">
               <td>${index++}</td>
               <td>${data.inspector}</td>
               <td>${data.time}</td>
@@ -53,13 +46,17 @@
               <td>${data.wrPhotoURL ? `<img src="${data.wrPhotoURL}" alt="Foto WR" class="thumbnail" data-full="${data.wrPhotoURL}">` : "Tidak Ada WR"}</td>
               <td>${data.photoURL ? `<img src="${data.photoURL}" alt="Foto Masalah" class="thumbnail" data-full="${data.photoURL}">` : "Tidak Ada Foto"}</td>
               <td>
-                <select class="wr-status" data-id="${data.key}">
+                <span class="keterangan-text">${data.keterangan ? data.keterangan : ''}</span>
+                <input type="text" class="keterangan-input" value="${data.keterangan ? data.keterangan : ''}">
+              </td>
+              <td>
+                <select class="wr-status">
                   <option value="Belum" ${data.wrStatus === "Belum" ? "selected" : ""}>Belum</option>
                   <option value="Tutup" ${data.wrStatus === "Tutup" ? "selected" : ""}>Tutup</option>
                 </select>
               </td>
-              <td><button class="update-btn" data-id="${data.key}">Update</button></td>
-              <td><button class="delete-btn" data-id="${data.key}">Hapus</button></td>
+              <td><button class="update-btn">Update</button></td>
+              <td><button class="delete-btn">Hapus</button></td>
             </tr>`;
             tableBody.insertAdjacentHTML('beforeend', row);
           });
@@ -67,15 +64,18 @@
           // Add event listeners for update buttons
           document.querySelectorAll('.update-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
-              const id = e.target.getAttribute('data-id');
-              const selectElement = document.querySelector(`.wr-status[data-id="${id}"]`);
+              const tr = e.target.closest('tr');
+              const id = tr.getAttribute('data-key');
+              const selectElement = tr.querySelector('.wr-status');
               const newStatus = selectElement.value;
+              const keteranganInput = tr.querySelector('.keterangan-input');
+              const newKeterangan = keteranganInput.value;
 
-              const confirmed = confirm('Apakah Anda yakin ingin mengubah status WR ini?');
+              const confirmed = confirm('Apakah Anda yakin ingin mengubah status WR dan keterangan ini?');
               if (confirmed) {
-                await update(ref(db, 'issues/' + id), { wrStatus: newStatus });
-                alert('Status WR berhasil diperbarui.');
-                loadIssues(); // Reload issues to reflect the updated status
+                await update(ref(db, 'issues/' + id), { wrStatus: newStatus, keterangan: newKeterangan });
+                alert('Status WR dan keterangan berhasil diperbarui.');
+                loadIssues(); // Reload issues to reflect the updated status and keterangan
               }
             });
           });
@@ -83,7 +83,8 @@
           // Add event listeners for delete buttons
           document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
-              const id = e.target.getAttribute('data-id');
+              const tr = e.target.closest('tr');
+              const id = tr.getAttribute('data-key');
               const code = prompt('Masukkan kode verifikasi untuk menghapus:');
               if (code === '0000') {
                 await remove(ref(db, 'issues/' + id));
@@ -134,6 +135,7 @@
             <th>Perlakuan</th>
             <th>Work Request (WR)</th>
             <th>Foto Masalah</th>
+            <th>Keterangan</th>
             <th>Status WR</th>
             <th>Update</th>
             <th>Hapus</th>
