@@ -31,14 +31,24 @@
       const loadIssues = () => {
         onValue(ref(db, 'issues'), (snapshot) => {
           tableBody.innerHTML = "";
-          let index = 1;
+          let issues = []; // ADD THIS: Array to hold the issues
 
           snapshot.forEach(childSnapshot => {
             const data = childSnapshot.val();
             const key = childSnapshot.key;
+            issues.push({ key, data }); // ADD THIS: Push each issue into the array
+          });
+
+          // ADD THIS: Sort the issues array by time
+          issues.sort((a, b) => new Date(a.data.time) - new Date(b.data.time));
+
+          // ADD THIS: Insert sorted issues into the table
+          issues.forEach((issue, index) => {
+            const data = issue.data;
+            const key = issue.key;
 
             const row = `<tr data-key="${key}">
-              <td>${index++}</td>
+              <td>${index + 1}</td>
               <td>${data.inspector}</td>
               <td>${data.time}</td>
               <td>${data.issue}</td>
