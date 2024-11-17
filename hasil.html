@@ -8,6 +8,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
     import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
 
+    // Firebase Configuration
     const firebaseConfig = {
       apiKey: "AIzaSyCyvkWAbIDB588aMjBY41NbD2HMLakXiUE",
       authDomain: "historyconverter-2862f.firebaseapp.com",
@@ -22,67 +23,77 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const resultTableBody = document.getElementById("resultTableBody");
-// Fungsi untuk mengubah format tanggal menjadi DD-MM-YYYY
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0"); // Bulan dimulai dari 0
-  const year = date.getFullYear();
-  return `${day}-${month}-${year}`;
-};
+    const train1TableBody = document.getElementById("train1TableBody");
+    const train2TableBody = document.getElementById("train2TableBody");
+
+    // Format date to DD-MM-YYYY
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    };
+
     // Fetch data from Firebase
     const dataRef = ref(db, "work_requests");
     onValue(dataRef, (snapshot) => {
-      resultTableBody.innerHTML = "";
-      let index = 1;
+      train1TableBody.innerHTML = ""; // Clear Train 1 table
+      train2TableBody.innerHTML = ""; // Clear Train 2 table
+      let index1 = 1, index2 = 1;
       snapshot.forEach((childSnapshot) => {
         const data = childSnapshot.val();
         const key = childSnapshot.key;
 
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td><input type="checkbox" class="delete-checkbox" data-key="${key}"></td>
-          <td>${index++}</td>
-          <td>${data.name}</td>
-          <td>${formatDate(data.date)}</td>
-          <td>${data.issue}</td>
-          <td>
-            <img src="${data.workRequest}" alt="Work Request Image" class="thumbnail" onclick="showPopup('${data.workRequest}')">
-          </td>
-          <td>
-            <div class="status-display">${data.status || "On-Going"}</div>
-            <select class="status-dropdown" data-key="${key}" onchange="updateStatusDisplay(this)">
-              <option value="On-Going" ${data.status === "On-Going" || !data.status ? "selected" : ""}>On-Going</option>
-              <option value="Close" ${data.status === "Close" ? "selected" : ""}>Close</option>
-              <option value="List Shutdown" ${data.status === "List Shutdown" ? "selected" : ""}>List Shutdown</option>
-            </select>
-          </td>
-          
+        const row = `
+          <tr>
+            <td><input type="checkbox" class="delete-checkbox" data-key="${key}"></td>
+            <td>${data.name}</td>
+            <td>${formatDate(data.date)}</td>
+            <td>${data.issue}</td>
+            <td>
+              <img src="${data.workRequest}" alt="Work Request Image" class="thumbnail" onclick="showPopup('${data.workRequest}')">
+            </td>
+            <td>
+              <div class="status-display">${data.status || "On-Going"}</div>
+              <select class="status-dropdown" data-key="${key}" onchange="updateStatusDisplay(this)">
+                <option value="On-Going" ${data.status === "On-Going" || !data.status ? "selected" : ""}>On-Going</option>
+                <option value="Close" ${data.status === "Close" ? "selected" : ""}>Close</option>
+                <option value="List Shutdown" ${data.status === "List Shutdown" ? "selected" : ""}>List Shutdown</option>
+              </select>
+            </td>
+          </tr>
         `;
-        resultTableBody.appendChild(row);
+
+        // Separate data into Train 1 and Train 2 tables
+        if (data.train === "Train 1") {
+          train1TableBody.insertAdjacentHTML("beforeend", row);
+        } else if (data.train === "Train 2") {
+          train2TableBody.insertAdjacentHTML("beforeend", row);
+        }
       });
     });
 
-    // Update status in Firebase
-    window.updateStatus = () => {
-      const dropdowns = document.querySelectorAll(".status-dropdown");
-      let updateCount = 0;
+// Update status in Firebase
+window.updateStatus = () => {
+  const dropdowns = document.querySelectorAll(".status-dropdown");
+  let updateCount = 0;
 
-      dropdowns.forEach((dropdown) => {
-        const key = dropdown.getAttribute("data-key");
-        const status = dropdown.value;
+  dropdowns.forEach((dropdown) => {
+    const key = dropdown.getAttribute("data-key");
+    const status = dropdown.value;
 
-        update(ref(db, `work_requests/${key}`), { status })
-          .then(() => {
-            updateCount++;
-            if (updateCount === 1) { // Show popup only once
-              alert("Status updated successfully!");
-            }
-          })
-          .catch((err) => alert("Error updating status: " + err.message));
-      });
-    };
+    update(ref(db, `work_requests/${key}`), { status })
+      .then(() => {
+        updateCount++;
+        // Show the popup only once after all updates are complete
+        if (updateCount === dropdowns.length) {
+          alert("Status updated successfully!");
+        }
+      })
+      .catch((err) => alert("Error updating status: " + err.message));
+  });
+};
 
     // Update status display
     window.updateStatusDisplay = (element) => {
@@ -105,63 +116,62 @@ const formatDate = (dateString) => {
         alert("Kode verifikasi salah.");
       }
     };
-    // Fungsi untuk menampilkan popup dengan gambar
-window.showPopup = (imageUrl) => {
-  const popup = document.getElementById("popup");
-  const popupImage = document.getElementById("popupImage");
 
-  popupImage.src = imageUrl;
-  popup.style.display = "flex";
-};
+    // Show popup image
+    window.showPopup = (imageUrl) => {
+      const popup = document.getElementById("popup");
+      const popupImage = document.getElementById("popupImage");
+      popupImage.src = imageUrl;
+      popup.style.display = "flex";
+    };
 
-// Fungsi untuk menutup popup
-window.closePopup = () => {
-  const popup = document.getElementById("popup");
-  popup.style.display = "none";
-};
-
+    // Close popup
+    window.closePopup = () => {
+      document.getElementById("popup").style.display = "none";
+    };
   </script>
   <style>
-  	body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
+    /* General styles */
+    body {
+      font-family: Arial, sans-serif;
       background-color: #f4f4f9;
       color: #333;
+      margin: 0;
+      padding: 0;
     }
     .container {
       max-width: 85%;
       margin: 20px auto;
-      background: #fff;
       padding: 20px;
+      background: #fff;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       border-radius: 10px;
     }
-    h1 {
-      font-size: 18px;
+    h1, h2 {
       text-align: center;
     }
-    /* Tambahkan gaya untuk elemen pembungkus tabel */
-.table-container {
-  overflow-x: auto; /* Aktifkan scroll horizontal */
-  margin-top: 20px;
-}
 
-table {
-  width: 100%; /* Pastikan tabel tetap fleksibel */
-  border-collapse: collapse;
-  min-width: 500px; /* Tetapkan lebar minimum tabel agar horizontal scroll muncul */
-}
-    table, th, td {
-      border: 1px solid #ddd;
+    /* Table styles */
+    .table-container {
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 500px;
+      margin-bottom: 20px;
     }
     th, td {
       padding: 10px;
       text-align: center;
+      border: 1px solid #ddd;
     }
     th {
       background-color: #f4f4f9;
     }
+
+    /* Thumbnail and popup */
     .thumbnail {
       width: 70px;
       height: 70px;
@@ -170,23 +180,6 @@ table {
     }
     .thumbnail:hover {
       transform: scale(1.1);
-    }
-    .status-dropdown {
-      width: 100%;
-      padding: 5px;
-    }
-    button {
-      display: block;
-      margin: 20px auto 0;
-      padding: 10px 20px;
-      background: #5c67f2;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #4b53c9;
     }
     #popup {
       display: none;
@@ -203,36 +196,21 @@ table {
     #popup img {
       max-width: 90%;
       max-height: 90%;
-      border: 4px solid #fff;
-      border-radius: 10px;
     }
-    #popup button {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: red;
+
+    /* Button styles */
+    button {
+      margin: 20px auto 0;
+      display: block;
       padding: 10px 20px;
+      background: #5c67f2;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
     }
-    @media (max-width: 600px) {
-      th, td {
-        font-size: 14px;
-        padding: 8px;
-      }
-      button {
-        font-size: 14px;
-        padding: 8px 16px;
-      }
-    }
-    /* Sama dengan gaya sebelumnya, dengan tambahan untuk checkbox */
-    th, td {
-      text-align: center;
-    }
-    .status-display {
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
-    .delete-checkbox {
-      transform: scale(1.2);
+    button:hover {
+      background: #4b53c9;
     }
   </style>
 </head>
@@ -242,21 +220,36 @@ table {
   </div>
   <div class="container">
     <h1>WR Converter - Hasil</h1>
+    <h2>Train 1</h2>
     <div class="table-container">
       <table>
         <thead>
           <tr>
             <th>Pilih</th>
-            <th>No</th>
             <th>Nama</th>
             <th>Tanggal</th>
             <th>Masalah</th>
             <th>Work Request</th>
             <th>Status</th>
-            
           </tr>
         </thead>
-        <tbody id="resultTableBody"></tbody>
+        <tbody id="train1TableBody"></tbody>
+      </table>
+    </div>
+    <h2>Train 2</h2>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Pilih</th>
+            <th>Nama</th>
+            <th>Tanggal</th>
+            <th>Masalah</th>
+            <th>Work Request</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="train2TableBody"></tbody>
       </table>
     </div>
     <button onclick="updateStatus()">Update</button>

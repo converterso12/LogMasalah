@@ -22,6 +22,7 @@
     const db = getDatabase(app);
 
     window.submitData = () => {
+  const train = document.getElementById("train").value;
   const name = document.getElementById("name").value;
   const date = document.getElementById("date").value;
   const issue = document.getElementById("issue").value;
@@ -67,6 +68,7 @@
       const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.5); // Adjust quality (0.5 is ~50%)
       const dataRef = ref(db, "work_requests");
       push(dataRef, { 
+        train, 
         name, 
         date, 
         issue, 
@@ -116,7 +118,7 @@
       margin-top: 10px;
       display: block;
     }
-    input, button {
+    input, select,  button {
       width: 90%;
       padding: 10px;
       margin-top: 5px;
@@ -124,6 +126,7 @@
       border-radius: 5px;
       font-size: 16px;
     }
+    
     button {
       background: #5c67f2;
       color: white;
@@ -165,6 +168,11 @@
   <div class="container">
     <h1>WR Converter - Input</h1>
     <form id="form">
+    	<label for="train">Train:</label>
+      <select id="train">
+                <option value="Train 1">Train 1</option>
+                <option value="Train 2">Train 2</option>
+    </select>
       <label for="name">Nama:</label>
       <input type="text" id="name" required>
       <label for="date">Tanggal:</label>
